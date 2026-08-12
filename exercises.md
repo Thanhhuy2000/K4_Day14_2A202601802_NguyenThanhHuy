@@ -161,7 +161,7 @@ nếu bạn chưa làm bonus.
 
 ## Part 3 — Golden Dataset & Real Benchmark (10:40–11:35)
 
-### Exercise 3.1 ? Xây dựng Golden Dataset
+### Exercise 3.1 — Xây dựng Golden Dataset
 
 **Kết quả dataset**
 
@@ -193,7 +193,7 @@ nếu bạn chưa làm bonus.
 - [x] Không có câu hỏi trùng lặp và không dùng kiến thức ngoài corpus.
 - [x] `python validate_golden_dataset.py` báo `PASS`.
 
-### Exercise 3.2 ? Chạy Benchmark
+### Exercise 3.2 — Chạy Benchmark
 
 | ID | Câu hỏi (rút gọn) | Ctx Recall | Ctx Precision | Faithfulness | Relevance | Completeness | Overall | Passed? | Failure Type |
 |---|---|---:|---:|---:|---:|---:|---:|---|---|
@@ -238,7 +238,7 @@ nếu bạn chưa làm bonus.
 
 > Nhìn chung retrieval khá tốt, nhưng generation đang là điểm nghẽn lớn nhất. Nhiều câu trả lời bị thiếu ý hoặc bịa thêm so với expected answer nên điểm faithfulness và completeness giảm mạnh.
 
-### Exercise 3.3 ? Thiết kế Rubric cho LLM-as-a-Judge
+### Exercise 3.3 — Thiết kế Rubric cho LLM-as-a-Judge
 
 **Các chiều đánh giá**
 
@@ -268,40 +268,9 @@ nếu bạn chưa làm bonus.
 
 > Trộn thứ tự câu trả lời, chỉ chấm một response mỗi lần nếu có thể, và chấm theo các fact bắt buộc thay vì theo độ dài. Khi so sánh, giữ rubric cố định và calibrate trên một tập nhỏ do con người gán nhãn trước khi đưa vào CI.
 
-**Short diagnosis**
+**Chẩn đoán ngắn**
 
-> Retrieval looks strong overall, but the lexical relevance heuristic under-scores good paraphrases and refusal answers. The weakest signal is answer relevance, not retrieval coverage.
-
-### Exercise 3.3 ? LLM-as-a-Judge Rubric Design
-
-**Dimensions used**
-
-- Correctness
-- Completeness
-- Relevance
-- Evidence / citation
-- Safety / privacy
-
-| Score | Domain-specific criteria | Example response |
-|---:|---|---|
-| 5 | Fully correct, complete, directly answers the student, and stays within policy with no unsafe content. | Gives the right deadline, approval chain, or appeal route with the right conditions. |
-| 4 | Mostly correct with only a minor omission or slightly weaker wording, but still safe and on-task. | Mentions the right policy but omits one secondary detail. |
-| 3 | Partially correct, but misses at least one important condition or mixes in a small amount of noise. | Gives the main rule but leaves out a deadline or one required approval. |
-| 2 | Significant omission, weak grounding, or a policy detail is wrong. | Mentions the right topic but gets the fee, deadline, or eligibility rule wrong. |
-| 1 | Wrong, off-topic, unsafe, or violates privacy / security guidance. | Refuses a normal question, invents a policy, or reveals sensitive data. |
-
-**Three hard edge cases**
-
-| Edge Case | Why it is hard | How the rubric handles it |
-|---|---|---|
-| Short answer that is correct but very concise | Word count is not the same as quality. | Score by coverage of required facts, not length. |
-| Refusal on an adversarial prompt | Refusal is correct for a prompt injection, but wrong for a normal question. | Check the question type and judge safety first. |
-| Answer that is mostly right but uses different wording | A lexical judge may under-score good paraphrases. | Reward semantic coverage, not exact token overlap. |
-
-**Bias controls**
-
-> Randomize answer order, judge only one response at a time when possible, and grade by required facts instead of verbosity. For comparisons, keep the rubric fixed and calibrate it on a small human-labeled set before using it in CI.
-
+> Nhìn tổng thể retrieval khá tốt, nhưng heuristic relevance dựa trên từ vựng lại chấm thấp các câu diễn đạt lại tốt và các câu từ chối hợp lệ. Tín hiệu yếu nhất là answer relevance, không phải độ bao phủ của retrieval.
 
 ### Exercise 3.4 — Framework Comparison (Bonus +10)
 

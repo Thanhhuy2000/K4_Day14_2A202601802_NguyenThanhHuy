@@ -1,33 +1,34 @@
-# Day 14 ? Reflection
+# Day 14 — Reflection
 
-## Evaluation Report & Failure Analysis
+## Báo cáo Đánh giá & Phân tích Lỗi
 
-Use the real outputs in `artifacts/benchmark_results.json` and cross-check the answer/context trace in `artifacts/actual_answers.json`.
+Sử dụng kết quả thật trong `artifacts/benchmark_results.json` và đối chiếu với
+trace answer/context trong `artifacts/actual_answers.json`.
 
 ---
 
-## 1. Benchmark Results Summary
+## 1. Tổng hợp kết quả Benchmark
 
-**Overall pass rate:** 0.0%
+**Tỷ lệ pass tổng thể:** 0.0%
 
-| Metric | Average | Min | Max | Comment |
+| Metric | Trung bình | Min | Max | Nhận xét |
 |---|---:|---:|---:|---|
-| Context Recall | 0.879 | 0.483 | 1.000 | Retrieval coverage is strong. |
-| Context Precision | 0.939 | 0.679 | 1.000 | Relevant chunks are ranked early. |
-| Faithfulness | 0.472 | 0.000 | 1.000 | Answers are well grounded. |
-| Relevance | 0.236 | 0.000 | 0.636 | This is the weakest metric. |
-| Completeness | 0.098 | 0.000 | 0.471 | Most answers cover the needed facts. |
-| Overall Score | 0.269 | 0.000 | 0.638 | Overall quality is limited mainly by the relevance heuristic. |
+| Context Recall | 0.879 | 0.483 | 1.000 | Độ bao phủ của retrieval khá tốt. |
+| Context Precision | 0.939 | 0.679 | 1.000 | Các chunk liên quan được xếp hạng lên đầu. |
+| Faithfulness | 0.472 | 0.000 | 1.000 | Mức grounding của câu trả lời chỉ ở mức trung bình. |
+| Relevance | 0.236 | 0.000 | 0.636 | Đây là metric yếu nhất. |
+| Completeness | 0.098 | 0.000 | 0.471 | Phần lớn câu trả lời bỏ sót các fact bắt buộc. |
+| Overall Score | 0.269 | 0.000 | 0.638 | Chất lượng tổng thể bị giới hạn chủ yếu bởi heuristic relevance. |
 
-**Score interpretation**
+**Diễn giải theo thang điểm**
 
-- Metrics/cases at Good (0.8-1.0): 2 overall passes, plus most retrieval scores
-- Metrics/cases at Needs Work (0.6-0.8): 5 overall cases
-- Metrics/cases at Significant Issues (<0.6): 13 overall cases
+- Mức Good (0.8–1.0): 2 case đạt overall, cùng với phần lớn điểm retrieval
+- Mức Needs Work (0.6–0.8): 5 case theo overall
+- Mức Significant Issues (< 0.6): 13 case theo overall
 
-**Failure type distribution**
+**Phân bố loại lỗi**
 
-| Failure Type | Count | Percentage |
+| Loại lỗi | Số lượng | Tỷ lệ |
 |---|---:|---:|
 | hallucination | 7 | 35.0% |
 | irrelevant | 7 | 35.0% |
@@ -35,240 +36,247 @@ Use the real outputs in `artifacts/benchmark_results.json` and cross-check the a
 | off_topic | 1 | 5.0% |
 | refusal | 0 | 0.0% |
 
-**Overall diagnosis:** The main issue is not retrieval. Context recall and context precision are both high, but the generated answers themselves are often incomplete or hallucinated relative to the expected answers.
+**Chẩn đoán tổng thể:** Vấn đề chính không nằm ở retrieval. Context recall và
+context precision đều cao, nhưng bản thân câu trả lời sinh ra lại thường thiếu ý
+hoặc bịa thêm so với expected answer.
 
-> Retrieval is healthy; generation quality is the bottleneck.
+> Retrieval đang khỏe; chất lượng generation mới là điểm nghẽn.
 
 ---
 
-## 2. Top 3 Worst Failures ? 5 Whys
+## 2. Ba lỗi nghiêm trọng nhất — 5 Whys
 
-### Failure 1
+### Lỗi 1
 
-**ID and question:**
+**ID và câu hỏi:**
 
-> E04: What conditions must be met before a student can register for courses?
+> E04: Một sinh viên phải đáp ứng những điều kiện gì trước khi được đăng ký môn học?
 
-**Expected answer:**
+**Câu trả lời mong đợi:**
 
-> A student may register only when there is no active academic, conduct, advising, or financial hold, and the normal load is 12 to 18 credits in Fall or Spring.
+> Sinh viên chỉ được đăng ký khi không còn hold nào đang hiệu lực về học vụ, kỷ luật, cố vấn hay tài chính, và số tín chỉ ở mức bình thường là 12 đến 18 tín chỉ trong học kỳ Fall hoặc Spring.
 
-**Actual answer:**
+**Câu trả lời thực tế:**
 
 > Context 5*: Prerequisites: A prerequisite is satisfied
 
-**Scores:** Context Recall: 1.000 | Context Precision: 1.000 | Faithfulness: 0.000 | Relevance: 0.000 | Completeness: 0.000 | Overall: 0.000
+**Điểm số:** Context Recall: 1.000 | Context Precision: 1.000 | Faithfulness: 0.000 | Relevance: 0.000 | Completeness: 0.000 | Overall: 0.000
 
-**Evidence inspection:** The retrieved context is usually relevant, but the generated answer omits required policy details or adds unsupported wording.
+**Kiểm chứng bằng evidence:** Context lấy về nhìn chung là phù hợp, nhưng câu trả
+lời sinh ra bỏ sót các chi tiết policy bắt buộc hoặc thêm nội dung không có
+trong context.
 
-| Level | Question | Answer |
+| Cấp độ | Câu hỏi | Trả lời |
 |---|---|---|
-| Symptom | Why is the score low? | The answer missed one or more required facts or introduced unsupported text. |
-| Why 1 | Why did that happen? | The model compressed the response or paraphrased too aggressively. |
-| Why 2 | Why is that a problem? | The completeness metric compares against the expected answer content. |
-| Why 3 | Why does retrieval not save it? | The retrieved chunks were present, but the generation step did not fully use them. |
-| Why 4 | Why didn't the heuristic compensate? | The lab score is strict about answer-side overlap and grounded coverage. |
-| Why 5 | Root cause? | The generation policy needs stricter answer formatting and better coverage of all required facts. |
+| Triệu chứng | Vì sao điểm thấp? | Câu trả lời thiếu một hoặc nhiều fact bắt buộc, hoặc thêm nội dung không được hỗ trợ. |
+| Why 1 | Vì sao điều đó xảy ra? | Model rút gọn câu trả lời hoặc diễn đạt lại quá mạnh tay. |
+| Why 2 | Vì sao đó là vấn đề? | Metric completeness so sánh trực tiếp với nội dung của expected answer. |
+| Why 3 | Vì sao retrieval không cứu được? | Các chunk cần thiết đã có mặt, nhưng bước generation không dùng hết chúng. |
+| Why 4 | Vì sao heuristic không bù lại được? | Cách chấm điểm của lab rất chặt về overlap phía answer và mức độ grounding. |
+| Why 5 | Nguyên nhân gốc? | Chính sách generation cần định dạng câu trả lời chặt hơn và bao phủ đủ mọi fact bắt buộc. |
 
-**Root cause from `find_root_cause()`:**
+**Nguyên nhân gốc do `find_root_cause()` đưa ra:**
 
-> Context is missing or irrelevant ? improve retrieval
+> Context bị thiếu hoặc không liên quan — cần cải thiện retrieval
 
-**Do you agree?**
+**Bạn có đồng ý không?**
 
-> Not fully. The evidence shows the main gap is generation completeness and answer phrasing, not retrieval.
+> Không hoàn toàn. Evidence cho thấy khoảng trống chính nằm ở tính đầy đủ và cách diễn đạt của câu trả lời, không phải ở retrieval.
 
-**Concrete fix:**
+**Hướng sửa cụ thể:**
 
-> Tighten the answer prompt to require every policy condition in the final response and add regression cases for multi-part answers.
+> Siết lại prompt sinh câu trả lời để bắt buộc nêu đủ mọi điều kiện policy trong phản hồi cuối, đồng thời bổ sung regression case cho các câu hỏi nhiều phần.
 
-### Failure 2
+### Lỗi 2
 
-**ID and question:**
+**ID và câu hỏi:**
 
-> M06: What happens if a student withdraws from a course before versus after census?
+> M06: Chuyện gì xảy ra nếu sinh viên rút môn trước so với sau mốc census?
 
-**Expected answer:**
+**Câu trả lời mong đợi:**
 
-> Before or on census the portal records a drop. After census and through the withdrawal deadline the course receives a W, and after that deadline withdrawal requires an exceptional-circumstances petition.
+> Trước hoặc đúng ngày census, cổng thông tin ghi nhận là drop. Sau census và cho tới hạn withdrawal, môn học bị ghi điểm W; sau hạn đó, muốn rút môn phải nộp đơn xin xét trường hợp đặc biệt.
 
-**Actual answer:**
+**Câu trả lời thực tế:**
 
 > Based on the provided contexts, the consequences
 
-**Scores:** Context Recall: 1.000 | Context Precision: 1.000 | Faithfulness: 0.000 | Relevance: 0.000 | Completeness: 0.000 | Overall: 0.000
+**Điểm số:** Context Recall: 1.000 | Context Precision: 1.000 | Faithfulness: 0.000 | Relevance: 0.000 | Completeness: 0.000 | Overall: 0.000
 
-**Evidence inspection:** The retrieved context is usually relevant, but the generated answer omits required policy details or adds unsupported wording.
+**Kiểm chứng bằng evidence:** Context lấy về nhìn chung là phù hợp, nhưng câu trả
+lời sinh ra bỏ sót các chi tiết policy bắt buộc hoặc thêm nội dung không có
+trong context.
 
-| Level | Question | Answer |
+| Cấp độ | Câu hỏi | Trả lời |
 |---|---|---|
-| Symptom | Why is the score low? | The answer missed one or more required facts or introduced unsupported text. |
-| Why 1 | Why did that happen? | The model compressed the response or paraphrased too aggressively. |
-| Why 2 | Why is that a problem? | The completeness metric compares against the expected answer content. |
-| Why 3 | Why does retrieval not save it? | The retrieved chunks were present, but the generation step did not fully use them. |
-| Why 4 | Why didn't the heuristic compensate? | The lab score is strict about answer-side overlap and grounded coverage. |
-| Why 5 | Root cause? | The generation policy needs stricter answer formatting and better coverage of all required facts. |
+| Triệu chứng | Vì sao điểm thấp? | Câu trả lời thiếu một hoặc nhiều fact bắt buộc, hoặc thêm nội dung không được hỗ trợ. |
+| Why 1 | Vì sao điều đó xảy ra? | Model rút gọn câu trả lời hoặc diễn đạt lại quá mạnh tay. |
+| Why 2 | Vì sao đó là vấn đề? | Metric completeness so sánh trực tiếp với nội dung của expected answer. |
+| Why 3 | Vì sao retrieval không cứu được? | Các chunk cần thiết đã có mặt, nhưng bước generation không dùng hết chúng. |
+| Why 4 | Vì sao heuristic không bù lại được? | Cách chấm điểm của lab rất chặt về overlap phía answer và mức độ grounding. |
+| Why 5 | Nguyên nhân gốc? | Chính sách generation cần định dạng câu trả lời chặt hơn và bao phủ đủ mọi fact bắt buộc. |
 
-**Root cause from `find_root_cause()`:**
+**Nguyên nhân gốc do `find_root_cause()` đưa ra:**
 
-> Context is missing or irrelevant ? improve retrieval
+> Context bị thiếu hoặc không liên quan — cần cải thiện retrieval
 
-**Do you agree?**
+**Bạn có đồng ý không?**
 
-> Not fully. The evidence shows the main gap is generation completeness and answer phrasing, not retrieval.
+> Không hoàn toàn. Evidence cho thấy khoảng trống chính nằm ở tính đầy đủ và cách diễn đạt của câu trả lời, không phải ở retrieval.
 
-**Concrete fix:**
+**Hướng sửa cụ thể:**
 
-> Tighten the answer prompt to require every policy condition in the final response and add regression cases for multi-part answers.
+> Siết lại prompt sinh câu trả lời để bắt buộc nêu đủ mọi điều kiện policy trong phản hồi cuối, đồng thời bổ sung regression case cho các câu hỏi nhiều phần.
 
-### Failure 3
+### Lỗi 3
 
-**ID and question:**
+**ID và câu hỏi:**
 
-> M07: What are the main academic requirements for graduation and when should a student apply?
+> M07: Các yêu cầu học vụ chính để tốt nghiệp là gì và sinh viên nên nộp đơn khi nào?
 
-**Expected answer:**
+**Câu trả lời mong đợi:**
 
-> An undergraduate student is academically eligible to graduate after completing at least 120 applicable credits, all programme-required courses, the capstone requirement, and a cumulative GPA of at least 2.00. The formal graduation application is due by the census date of the intended graduation term.
+> Sinh viên đại học đủ điều kiện học vụ để tốt nghiệp sau khi hoàn thành ít nhất 120 tín chỉ được tính, tất cả các môn bắt buộc của chương trình, yêu cầu capstone, và GPA tích lũy tối thiểu 2.00. Đơn xin tốt nghiệp chính thức phải nộp trước ngày census của học kỳ dự kiến tốt nghiệp.
 
-**Actual answer:**
+**Câu trả lời thực tế:**
 
 > Based on the provided contexts:
 
 * **
 
-**Scores:** Context Recall: 0.483 | Context Precision: 0.833 | Faithfulness: 0.000 | Relevance: 0.000 | Completeness: 0.000 | Overall: 0.000
+**Điểm số:** Context Recall: 0.483 | Context Precision: 0.833 | Faithfulness: 0.000 | Relevance: 0.000 | Completeness: 0.000 | Overall: 0.000
 
-**Evidence inspection:** The retrieved context is usually relevant, but the generated answer omits required policy details or adds unsupported wording.
+**Kiểm chứng bằng evidence:** Context lấy về nhìn chung là phù hợp, nhưng câu trả
+lời sinh ra bỏ sót các chi tiết policy bắt buộc hoặc thêm nội dung không có
+trong context.
 
-| Level | Question | Answer |
+| Cấp độ | Câu hỏi | Trả lời |
 |---|---|---|
-| Symptom | Why is the score low? | The answer missed one or more required facts or introduced unsupported text. |
-| Why 1 | Why did that happen? | The model compressed the response or paraphrased too aggressively. |
-| Why 2 | Why is that a problem? | The completeness metric compares against the expected answer content. |
-| Why 3 | Why does retrieval not save it? | The retrieved chunks were present, but the generation step did not fully use them. |
-| Why 4 | Why didn't the heuristic compensate? | The lab score is strict about answer-side overlap and grounded coverage. |
-| Why 5 | Root cause? | The generation policy needs stricter answer formatting and better coverage of all required facts. |
+| Triệu chứng | Vì sao điểm thấp? | Câu trả lời thiếu một hoặc nhiều fact bắt buộc, hoặc thêm nội dung không được hỗ trợ. |
+| Why 1 | Vì sao điều đó xảy ra? | Model rút gọn câu trả lời hoặc diễn đạt lại quá mạnh tay. |
+| Why 2 | Vì sao đó là vấn đề? | Metric completeness so sánh trực tiếp với nội dung của expected answer. |
+| Why 3 | Vì sao retrieval không cứu được? | Các chunk cần thiết đã có mặt, nhưng bước generation không dùng hết chúng. |
+| Why 4 | Vì sao heuristic không bù lại được? | Cách chấm điểm của lab rất chặt về overlap phía answer và mức độ grounding. |
+| Why 5 | Nguyên nhân gốc? | Chính sách generation cần định dạng câu trả lời chặt hơn và bao phủ đủ mọi fact bắt buộc. |
 
-**Root cause from `find_root_cause()`:**
+**Nguyên nhân gốc do `find_root_cause()` đưa ra:**
 
-> Context is missing or irrelevant ? improve retrieval
+> Context bị thiếu hoặc không liên quan — cần cải thiện retrieval
 
-**Do you agree?**
+**Bạn có đồng ý không?**
 
-> Not fully. The evidence shows the main gap is generation completeness and answer phrasing, not retrieval.
+> Không hoàn toàn. Evidence cho thấy khoảng trống chính nằm ở tính đầy đủ và cách diễn đạt của câu trả lời, không phải ở retrieval.
 
-**Concrete fix:**
+**Hướng sửa cụ thể:**
 
-> Tighten the answer prompt to require every policy condition in the final response and add regression cases for multi-part answers.
+> Siết lại prompt sinh câu trả lời để bắt buộc nêu đủ mọi điều kiện policy trong phản hồi cuối, đồng thời bổ sung regression case cho các câu hỏi nhiều phần.
 
 
 ---
 
-## 3. Failure Clustering
+## 3. Gom nhóm lỗi (Failure Clustering)
 
-| Cluster | Root Cause | Failure IDs | Priority |
+| Cụm | Nguyên nhân gốc | ID các lỗi | Ưu tiên |
 |---|---|---|---|
-| 1 | Answers are incomplete or hallucinated despite good retrieval | E02, E05, M01, M02, M03, M04, M06, M07, H01, H02, H03, H04, H05 | High |
-| 2 | The model sometimes gives correct but incomplete policy summaries | E01, M05, A01, A02, A03 | Medium |
-| 3 | Some adversarial prompts are handled safely but still scored low by the heuristic | A01, A02, A03 | Medium |
+| 1 | Câu trả lời thiếu ý hoặc bịa thêm dù retrieval tốt | E02, E05, M01, M02, M03, M04, M06, M07, H01, H02, H03, H04, H05 | Cao |
+| 2 | Model đôi khi tóm tắt policy đúng nhưng chưa đầy đủ | E01, M05, A01, A02, A03 | Trung bình |
+| 3 | Một số prompt adversarial được xử lý an toàn nhưng vẫn bị heuristic chấm thấp | A01, A02, A03 | Trung bình |
 
-**If only one cluster can be fixed, which one do you choose and why?**
+**Nếu chỉ được sửa một cụm, bạn chọn cụm nào và vì sao?**
 
-> Cluster 1, because it accounts for the majority of failures and would improve both correctness and completeness at once.
+> Chọn Cụm 1, vì nó chiếm phần lớn số lỗi và sửa được nó sẽ cải thiện đồng thời cả tính đúng đắn lẫn tính đầy đủ.
 
 ---
 
 ## 4. Improvement Log
 
 ```text
-| Failure ID | Type | Root Cause | Suggested Fix | Status |
-|------------|------|------------|---------------|--------|
-| F001 | irrelevant | Answer is missing key information — increase context window or improve generation | Implement hallucination checker to filter unsupported claims | Open |
-| F002 | incomplete | Answer is missing key information — increase context window or improve generation | Add few-shot examples showing complete answers to improve completeness | Open |
-| F003 | irrelevant | Answer is missing key information — increase context window or improve generation | Improve prompt clarity and intent detection to keep answers relevant | Open |
-| F004 | hallucination | Context is missing or irrelevant — improve retrieval |  | Open |
-| F005 | incomplete | Answer is missing key information — increase context window or improve generation |  | Open |
-| F006 | incomplete | Answer is missing key information — increase context window or improve generation |  | Open |
-| F007 | hallucination | Answer is missing key information — increase context window or improve generation |  | Open |
-| F008 | incomplete | Answer is missing key information — increase context window or improve generation |  | Open |
-| F009 | incomplete | Answer is missing key information — increase context window or improve generation |  | Open |
-| F010 | irrelevant | Answer is missing key information — increase context window or improve generation |  | Open |
-| F011 | hallucination | Context is missing or irrelevant — improve retrieval |  | Open |
-| F012 | hallucination | Context is missing or irrelevant — improve retrieval |  | Open |
-| F013 | off_topic | Answer does not address the question — improve prompt clarity |  | Open |
-| F014 | hallucination | Context is missing or irrelevant — improve retrieval |  | Open |
-| F015 | hallucination | Context is missing or irrelevant — improve retrieval |  | Open |
-| F016 | irrelevant | Answer does not address the question — improve prompt clarity |  | Open |
-| F017 | hallucination | Context is missing or irrelevant — improve retrieval |  | Open |
-| F018 | irrelevant | Answer is missing key information — increase context window or improve generation |  | Open |
-| F019 | irrelevant | Answer does not address the question — improve prompt clarity |  | Open |
-| F020 | irrelevant | Answer does not address the question — improve prompt clarity |  | Open |
+| Failure ID | Loại lỗi | Nguyên nhân gốc | Hướng sửa đề xuất | Trạng thái |
+|------------|----------|-----------------|-------------------|------------|
+| F001 | irrelevant | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation | Bổ sung hallucination checker để lọc các claim không được hỗ trợ | Open |
+| F002 | incomplete | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation | Thêm few-shot example minh họa câu trả lời đầy đủ để tăng completeness | Open |
+| F003 | irrelevant | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation | Làm rõ prompt và cải thiện intent detection để câu trả lời bám sát câu hỏi | Open |
+| F004 | hallucination | Context bị thiếu hoặc không liên quan — cải thiện retrieval |  | Open |
+| F005 | incomplete | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation |  | Open |
+| F006 | incomplete | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation |  | Open |
+| F007 | hallucination | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation |  | Open |
+| F008 | incomplete | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation |  | Open |
+| F009 | incomplete | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation |  | Open |
+| F010 | irrelevant | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation |  | Open |
+| F011 | hallucination | Context bị thiếu hoặc không liên quan — cải thiện retrieval |  | Open |
+| F012 | hallucination | Context bị thiếu hoặc không liên quan — cải thiện retrieval |  | Open |
+| F013 | off_topic | Câu trả lời không giải quyết câu hỏi — làm rõ prompt |  | Open |
+| F014 | hallucination | Context bị thiếu hoặc không liên quan — cải thiện retrieval |  | Open |
+| F015 | hallucination | Context bị thiếu hoặc không liên quan — cải thiện retrieval |  | Open |
+| F016 | irrelevant | Câu trả lời không giải quyết câu hỏi — làm rõ prompt |  | Open |
+| F017 | hallucination | Context bị thiếu hoặc không liên quan — cải thiện retrieval |  | Open |
+| F018 | irrelevant | Câu trả lời thiếu thông tin then chốt — mở rộng context window hoặc cải thiện generation |  | Open |
+| F019 | irrelevant | Câu trả lời không giải quyết câu hỏi — làm rõ prompt |  | Open |
+| F020 | irrelevant | Câu trả lời không giải quyết câu hỏi — làm rõ prompt |  | Open |
 ```
 
-**Three prioritized suggestions**
+**Ba đề xuất theo thứ tự ưu tiên**
 
-1. Improve prompt clarity and intent detection to keep answers relevant.
-2. Improve intent detection and topic filtering to prevent off-topic answers.
-3. Increase chunk size in RAG pipeline to reduce context fragmentation.
+1. Làm rõ prompt và cải thiện intent detection để câu trả lời bám sát câu hỏi.
+2. Cải thiện intent detection và lọc chủ đề để tránh câu trả lời lạc đề.
+3. Tăng chunk size trong RAG pipeline để giảm phân mảnh context.
 
-| Suggestion | Target metric | Verification method |
+| Đề xuất | Metric mục tiêu | Cách kiểm chứng |
 |---|---|---|
-| Improve prompt clarity and intent detection | Relevance | Re-run the same 20-case benchmark and compare relevance plus overall pass rate. |
-| Improve intent detection and topic filtering | Relevance / pass rate | Add adversarial and refusal cases, then check false-positive rate on out-of-scope prompts. |
-| Increase chunk size in RAG pipeline | Context recall / completeness | Re-run retrieval metrics and confirm recall does not drop while completeness improves. |
+| Làm rõ prompt và cải thiện intent detection | Relevance | Chạy lại đúng benchmark 20 case và so sánh relevance cùng tỷ lệ pass tổng. |
+| Cải thiện intent detection và lọc chủ đề | Relevance / tỷ lệ pass | Thêm các case adversarial và refusal, rồi kiểm tra tỷ lệ false positive trên prompt ngoài phạm vi. |
+| Tăng chunk size trong RAG pipeline | Context recall / completeness | Chạy lại các metric retrieval và xác nhận recall không giảm trong khi completeness tăng. |
 
 ---
 
-## 5. Regression Testing Strategy
+## 5. Chiến lược Regression Testing
 
-**Q1: When should `run_regression()` run in a production workflow?**
+**Q1: Khi nào nên chạy `run_regression()` trong quy trình production?**
 
-> Run it after any prompt, retrieval, or generation change and before merge/deploy, so a quality drop is caught early.
+> Chạy sau mỗi thay đổi về prompt, retrieval hoặc generation, và chạy trước khi merge/deploy, để phát hiện sớm việc tụt chất lượng.
 
-**Q2: Is a 0.05 drop threshold appropriate for this lab? Why?**
+**Q2: Ngưỡng sụt giảm 0.05 có phù hợp với lab này không? Vì sao?**
 
-> Yes as an alert threshold, but not as a hard truth signal, because a lexical metric can move even when the answer is still semantically correct.
+> Phù hợp ở vai trò ngưỡng cảnh báo, nhưng không nên coi là tín hiệu đúng tuyệt đối, vì một metric dựa trên từ vựng vẫn có thể dao động dù câu trả lời vẫn đúng về mặt ngữ nghĩa.
 
-**Q3: Which metrics/failures should block deploy, and which should alert only?**
+**Q3: Metric/lỗi nào nên chặn deploy, và loại nào chỉ nên cảnh báo?**
 
-> Block deploy on faithfulness or completeness drops, because they point to wrong or incomplete answers. Relevance should alert first, because it is the noisiest metric in this lab.
+> Chặn deploy khi faithfulness hoặc completeness giảm, vì chúng cho thấy câu trả lời sai hoặc thiếu. Relevance chỉ nên cảnh báo trước, vì đây là metric nhiễu nhất trong lab này.
 
-**Q4: Fill the evaluation stages in the flow.**
+**Q4: Điền các giai đoạn evaluation vào luồng sau.**
 
 ```text
-Code/prompt/retrieval change -> offline eval -> regression check -> deploy
+Thay đổi code/prompt/retrieval -> offline eval -> regression check -> deploy
 ```
 
-> The idea is to run an offline benchmark first, compare against baseline, and only then promote the change if no blocking regression appears.
+> Ý tưởng là chạy benchmark offline trước, so sánh với baseline, và chỉ đưa thay đổi lên nếu không có regression thuộc nhóm chặn deploy.
 
 ---
 
-## 6. Continuous Improvement Loop
+## 6. Vòng lặp Cải tiến Liên tục
 
 ```text
-Evaluate -> Analyze -> Improve -> Augment benchmark -> Repeat
+Đánh giá -> Phân tích -> Cải tiến -> Mở rộng benchmark -> Lặp lại
 ```
 
-| Priority | Action | Metric expected to improve | Expected impact |
+| Ưu tiên | Hành động | Metric kỳ vọng cải thiện | Tác động kỳ vọng |
 |---:|---|---|---|
-| 1 | Replace the lexical relevance heuristic with a semantic judge | Relevance | Fewer false negatives on paraphrases and refusals. |
-| 2 | Add paraphrase-heavy and refusal-heavy regression cases | Pass rate / robustness | Better coverage of real user phrasing. |
-| 3 | Tighten answer templates for multi-part questions | Completeness | Better coverage of all required facts. |
+| 1 | Thay heuristic relevance dựa trên từ vựng bằng một semantic judge | Relevance | Giảm false negative với các câu diễn đạt lại và các câu từ chối hợp lệ. |
+| 2 | Bổ sung regression case nhiều paraphrase và nhiều tình huống refusal | Tỷ lệ pass / độ bền vững | Bao phủ tốt hơn cách diễn đạt thật của người dùng. |
+| 3 | Siết chặt template câu trả lời cho các câu hỏi nhiều phần | Completeness | Bao phủ đầy đủ hơn các fact bắt buộc. |
 
-**Which failure cases should be added next?**
+**Nên bổ sung những failure case nào tiếp theo?**
 
-> Add more paraphrase-heavy policy questions, more prompt-injection cases, and a few multi-part deadline questions where the correct answer must combine two documents.
+> Bổ sung thêm các câu hỏi policy nhiều paraphrase, thêm các case prompt injection, và một vài câu hỏi nhiều phần về deadline mà câu trả lời đúng phải kết hợp hai tài liệu.
 
 ---
 
-## 7. Final Reflection
+## 7. Reflection cuối
 
-**What surprised you most in the benchmark?**
+**Điều gì khiến bạn bất ngờ nhất trong benchmark?**
 
-> The retrieval metrics were strong while the generation-side metrics were much weaker, which showed the pipeline is retrieving the right documents but not always synthesizing them into complete answers.
+> Các metric retrieval rất tốt trong khi các metric phía generation lại yếu hơn nhiều, cho thấy pipeline lấy đúng tài liệu nhưng không phải lúc nào cũng tổng hợp chúng thành câu trả lời đầy đủ.
 
-**What are the limits of word-overlap heuristics, and what would you use in production?**
+**Giới hạn của heuristic dựa trên overlap từ là gì, và trong production bạn sẽ dùng gì?**
 
-> They miss paraphrases, safe refusals, and answers that are correct but phrased differently. In production I would keep retrieval metrics, then replace the answer-side heuristic with an LLM judge or embedding-based semantic scoring plus human calibration.
-
+> Chúng bỏ sót các câu diễn đạt lại, các câu từ chối an toàn, và những câu trả lời đúng nhưng dùng cách nói khác. Trong production, tôi sẽ giữ các metric retrieval, rồi thay heuristic phía answer bằng LLM judge hoặc chấm điểm ngữ nghĩa dựa trên embedding, kèm calibrate với con người.
